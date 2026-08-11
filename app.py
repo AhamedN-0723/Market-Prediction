@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 import numpy as np
 import joblib
 from pathlib import Path
@@ -46,6 +47,7 @@ regression_features = [
     'impressions',
     'clicks',
     'leads',
+    'roi',
     'conversions',
     'acquisition_cost',
     'engagement_score',
@@ -292,6 +294,13 @@ elif page == "Revenue Prediction":
             ]
         )
 
+        desired_sale_value = st.number_input(
+            "Desired Sale Value (₹)",
+            min_value=0.0,
+            value=10000.0,
+            step=50.0
+        )
+
     predict_button = st.button(
         "Predict Revenue"
     )
@@ -307,6 +316,13 @@ elif page == "Revenue Prediction":
         engagement_score = round(engagement_score, 2)
 
         total_acquisition_cost = acquisition_cost * conversions
+
+        expected_revenue = desired_sale_value * conversions
+
+        expected_profit = expected_revenue - total_acquisition_cost
+
+        expected_profit_percentage = max(0, ((expected_profit/ total_acquisition_cost)) * 100
+                                         if total_acquisition_cost > 0 else 0 )
 
         click_through_rate = (
             clicks / impressions
@@ -438,13 +454,22 @@ elif page == "Revenue Prediction":
         
 
         prediction = regression_model.predict(input_df)
-
-        profit_percentage = (((prediction[0] - total_acquisition_cost) / total_acquisition_cost) if total_acquisition_cost > 0 else 0)
         
+        #ROI
+        profit_percentage_roi = (((prediction[0] - total_acquisition_cost) / total_acquisition_cost)*100 if total_acquisition_cost > 0 else 0)
 
+        profits = (prediction[0] - total_acquisition_cost, ((prediction[0] - total_acquisition_cost) / prediction[0]) * 100
+)
+        profit_amt = profits[0]
+        profit_perc = profits[1]
+
+        st.success(
+            f"Predicted Revenue: ₹ {prediction[0]:,.2f}\n\n"
+            f"Return on Investment (ROI): {profit_percentage_roi:.2f}%\n\n"
+            f"Profit: ₹ {profit_amt:,.2f}\n\n"
+            f"Profit Percentage: {profit_perc:.2f}%"
+            )
         
-        st.success(f"Predicted Revenue: ₹ {prediction[0]:,.2f}\n\nPredicted Profit Percentage: {profit_percentage:.2f} %")
-
         average_sale_value = (prediction[0] / conversions) if conversions > 0 else 0
 
         st.subheader("Calculated Features")
@@ -462,6 +487,41 @@ elif page == "Revenue Prediction":
         with col3:
             st.metric("Average Sale Value", "₹" + str(round(average_sale_value, 2)))
             st.metric("Total Acquisition Cost", "₹" + str(round(total_acquisition_cost, 2)))
+
+
+        st.divider()
+        
+
+        #PROFIT & PRICING ANALYSIS
+        st.subheader("Pricing & Profitability Analysis")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric(
+                "Desired Sale Value",
+                f"₹ {desired_sale_value:,.2f}"
+            )
+
+        with col2:
+            st.metric(
+                "Revenue Made",
+                f"₹ {expected_revenue:,.2f}"
+            )
+
+        with col3:
+            st.metric(
+                "Profit",
+                f"₹ {expected_profit:,.2f}"
+            )
+
+        with col4:
+            st.metric(
+                "Profit %",
+                f"{expected_profit_percentage:.2f}%"
+            )       
+
+        st.divider()
 
 
         st.subheader("Campaign Performance Analysis")
@@ -487,11 +547,11 @@ elif page == "Revenue Prediction":
         ]
         })
 
+        st.divider()
+
         st.subheader("Marketing Funnel")
         st.bar_chart(funnel.set_index("Stage"))
-
-
-        
+              
         
 
 
@@ -769,7 +829,7 @@ elif page == "Profit Prediction":
 
         profit_amount = (predicted_revenue - total_acquisition_cost)
 
-        roi = (profit_amount / total_acquisition_cost if total_acquisition_cost > 0 else 0 )
+        roi = ((profit_amount / total_acquisition_cost)*100 if total_acquisition_cost > 0 else 0 )
 
         st.success(f"""Predicted Revenue: ₹ {predicted_revenue:,.2f}\n\nProfit Amount: ₹ {profit_amount:,.2f}\n\nROI: {roi:.2f} %""")
 
